@@ -1,29 +1,33 @@
 from flask import Flask, request, jsonify
-import sqlite3
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
 from datetime import datetime
 
 app = Flask(__name__)
 
 # ==========================================================
-# INICIALIZAÇÃO DO BANCO DE DADOS
+# CONFIGURAÇÃO E INICIALIZAÇÃO DO MONGODB
 # ==========================================================
+uri = "mongodb+srv://arthursouza:Lu-300898@arthur.ui40ak0.mongodb.net/?appName=Arthur"
+client = None
+db = None
+
 def init_db():
-    conn = sqlite3.connect('leituras.db')
-    c = conn.cursor()
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS leituras (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp TEXT,
-            temperatura_c REAL,
-            umidade_pct REAL,
-            luminosidade INTEGER,
-            presenca INTEGER,
-            probabilidade_vida REAL
-        )
-    ''')
-    conn.commit()
-    conn.close()
-    print("[DB] ✅ Banco de dados inicializado com sucesso.")
+    global client, db
+    try:
+        # Create a new client and connect to the server
+        client = MongoClient(uri, server_api=ServerApi('1'))
+        
+        # Send a ping to confirm a successful connection
+        client.admin.command('ping')
+        print("[DB] ✅ Conexão com MongoDB Atlas estabelecida com sucesso!")
+        
+        # Selecionar o banco de dados
+        db = client['IoT']
+        
+    except Exception as e:
+        print(f"[DB] ❌ Erro ao conectar ao MongoDB: {e}")
+        raise e  # Re-raise the exception to prevent silent failures
 
 # ==========================================================
 # ROTA DE RECEBIMENTO (POST)
@@ -35,23 +39,14 @@ def receber_leituras():
         return jsonify({"erro": "JSON inválido"}), 400
 
     try:
-        conn = sqlite3.connect('leituras.db')
-        c = conn.cursor()
-        c.execute('''
-            INSERT INTO leituras (timestamp, temperatura_c, umidade_pct, luminosidade, presenca, probabilidade_vida)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (
-            datetime.now().isoformat(timespec='seconds'),
-            data.get('temperatura_c'),
-            data.get('umidade_pct'),
-            data.get('luminosidade'),
-            data.get('presenca'),
-            data.get('probabilidade_vida')
-        ))
-        conn.commit()
-        conn.close()
+        # Adicionar timestamp ao documento
+        data['timestamp'] = datetime.now().isoformat(timespec='seconds')
+        
+        # Inserir no MongoDB
+        result = db.leituras.insert_one(data)
+        
         print(f"[API] 📡 Nova leitura recebida: {data}")
-        return jsonify({"status": "sucesso"}), 201
+        return jsonify({"status": "sucesso", "id": str(result.inserted_id)}), 201
     except Exception as e:
         print("[ERRO]", e)
         return jsonify({"erro": str(e)}), 500
@@ -61,24 +56,19 @@ def receber_leituras():
 # ==========================================================
 @app.route('/leituras', methods=['GET'])
 def listar_leituras():
-    conn = sqlite3.connect('leituras.db')
-    c = conn.cursor()
-    c.execute('SELECT * FROM leituras ORDER BY id DESC LIMIT 100')
-    dados = c.fetchall()
-    conn.close()
-
-    leituras = [
-        {
-            "id": row[0],
-            "timestamp": row[1],
-            "temperatura_c": row[2],
-            "umidade_pct": row[3],
-            "luminosidade": row[4],
-            "presenca": bool(row[5]),
-            "probabilidade_vida": row[6]
-        } for row in dados
-    ]
-    return jsonify(leituras)
+    try:
+        # Buscar as últimas 100 leituras
+        leituras = list(db.leituras.find({}, {'_id': 0}).sort('timestamp', -1).limit(100))
+        
+        # Converter os valores de presença para boolean
+        for leitura in leituras:
+            if 'presenca' in leitura:
+                leitura['presenca'] = bool(leitura['presenca'])
+                
+        return jsonify(leituras)
+    except Exception as e:
+        print("[ERRO]", e)
+        return jsonify({"erro": str(e)}), 500
 
 # ==========================================================
 # EXECUÇÃO DO SERVIDOR

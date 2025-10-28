@@ -39,12 +39,12 @@ void sendMessage(String message) {
 
   HTTPClient http;
   http.begin(url);
-  int httpResponseCode = http.GET();  // ✅ Callmebot usa GET
+  int httpResponseCode = http.GET();  // Callmebot usa GET
 
   if (httpResponseCode == 200) {
-    Serial.println("[CALLMEBOT] ✅ Mensagem enviada com sucesso!");
+    Serial.println("[CALLMEBOT] Mensagem enviada com sucesso!");
   } else {
-    Serial.print("[CALLMEBOT] ❌ Erro ao enviar mensagem. Código: ");
+    Serial.print("[CALLMEBOT] Erro ao enviar mensagem. Código: ");
     Serial.println(httpResponseCode);
   }
 
@@ -149,17 +149,17 @@ void conectarWiFi() {
     delay(500);
     Serial.print(".");
   }
-  Serial.println("\n[WIFI] ✅ Conectado!");
+  Serial.println("\n[WIFI] Conectado!");
 }
 
 void conectarMQTT() {
   while (!client.connected()) {
     Serial.println("[MQTT] Tentando conexão...");
     if (client.connect("ESP32_Robo_Fisico")) {
-      Serial.println("[MQTT] ✅ Conectado!");
+      Serial.println("[MQTT] Conectado!");
       client.subscribe(mqttTopic);
     } else {
-      Serial.println("[MQTT] ❌ Falha, tentando novamente...");
+      Serial.println("[MQTT] Falha, tentando novamente...");
       delay(2000);
     }
   }
@@ -187,7 +187,8 @@ void enviarDadosServidor(float temperatura, float umidade, int luz, bool presenc
   }
 
   HTTPClient http;
-  http.begin("http://10.219.216.239:5000/leituras"); // 🔹 Troque pelo IP do servidor Python
+  http.begin("http://10.219.216.239:5000/leituras"); // 🔹 Troque pelo IP do servidor Python 
+  // O http muda de acordo com a máquina, portanto, é necessário altera-lo depois de usar o comando "python Banco-IoT.py" 
   http.addHeader("Content-Type", "application/json");
 
   String jsonData = "{";
@@ -290,10 +291,10 @@ void loop() {
     if (prob > 75) {
       digitalWrite(LED_VERDE, LOW);
       digitalWrite(LED_VERMELHO, HIGH);
-      Serial.println("⚠️ ALERTA! Alta probabilidade de vida detectada!");
+      Serial.println("ALERTA! Alta probabilidade de vida detectada!");
       if (!hasSend) {
         hasSend = true;
-        sendMessage("⚠️ Alerta! Alta probabilidade de vida detectada no planeta!");
+        sendMessage("Alerta! Alta probabilidade de vida detectada no planeta!");
       }
     } else {
       digitalWrite(LED_VERDE, HIGH);

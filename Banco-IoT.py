@@ -8,7 +8,7 @@ app = Flask(__name__)
 # ==========================================================
 # CONFIGURAÇÃO E INICIALIZAÇÃO DO MONGODB
 # ==========================================================
-uri = "mongodb+srv://arthursouza:Lu-300898@arthur.ui40ak0.mongodb.net/?appName=Arthur"
+uri = ""
 client = None
 db = None
 
